@@ -5,3 +5,4 @@
 .vscode/ipch
 sdkconfig.esp32s3dev
 sdkconfig.esp32dev
+.pio/

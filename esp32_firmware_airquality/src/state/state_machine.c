@@ -9,6 +9,7 @@
 static device_state_t current_state = STATE_UNPROVISIONED; //default state machine
 static const char *TAG = "**** state_machine ****"; //tag for logging
 extern bool isProvisioned; //extern variable to check if device is already provisioned
+const char *pop = "TEAM1abcd1234"; //proof of possession for secure provisioning, this is the PIN that the user will have to input on the provisioning app to allow provisioning with that specific phone
 
 /*
  * this function automatically assigns the current state to UNPROVISIONED
@@ -54,7 +55,9 @@ void sm_transition(device_state_t new_state) {
             * - service_key: an optional key that can be used by the provisioning client to authenticate with the device during provisioning. 
             *       This can be NULL if not used.
             */
-            wifi_prov_mgr_start_provisioning(WIFI_PROV_SECURITY_1, NULL, "QualiAir Link", NULL);
+
+            
+            wifi_prov_mgr_start_provisioning(WIFI_PROV_SECURITY_1, pop, "QualiAir Link", NULL);
             break;
         case STATE_PROVISIONING:
             ESP_LOGI(TAG, "Device is provisioning, waiting for Wi-Fi credentials.....");

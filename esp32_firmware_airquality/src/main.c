@@ -7,6 +7,7 @@
 #include "esp_wifi.h" //include esp_wifi for Wi-Fi connectivity
 #include "wifi_provisioning/manager.h"
 #include "wifi_provisioning/scheme_ble.h" //include BLE provisioning scheme for Wi-Fi provisioning
+#include "esp_sntp.h"// for time synchronization
 
 
 static const char *TAG = "**** main ****"; //tag for logging
@@ -128,6 +129,5 @@ void app_main(){
         wifi_prov_mgr_deinit();
         sm_transition(STATE_CONNECTING);
     }
-    // else: state machine already called wifi_prov_mgr_start_provisioning()
-    // so BLE is already advertising, nothing else needed
+    // else: state machine already called wifi_prov_mgr_start_provisioning()->so BLE is already working, nothing else needed
 }

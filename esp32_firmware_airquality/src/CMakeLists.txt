@@ -8,10 +8,16 @@ idf_component_register(
         "main.c"
         "state/state_machine.c"
         "mqtt/mqtt_manager.c"
+        "sensor/BME680Sensor.c"
+        "sensor/MQ136Sensor.c"
+        "sensor/MQ137Sensor.c"
+        "sensor/GP2Y1010_DustSensor.c"
+        "sensor/bme68x.c" 
     INCLUDE_DIRS
         "."
         "state"
         "mqtt"
+        "sensor"
     REQUIRES 
         esp_event 
         esp_wifi 

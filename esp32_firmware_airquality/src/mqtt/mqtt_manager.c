@@ -3,15 +3,82 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "esp_adc/adc_oneshot.h"
+#include "sensor/MQ136Sensor.h"
+#include "sensor/MQ137Sensor.h"
+#include "sensor/GP2Y1010_DustSensor.h"
+#include "driver/gpio.h" 
+#include "sensor/BME680Sensor.h"
+#include "esp_timer.h"
+#include "time.h"
+#include <inttypes.h>
 
 static const char *TAG = "**** mqtt_manager ****"; //tag for logging
 static esp_mqtt_client_handle_t client;
 
 /****************THIS IS FOR TEST PURPOSES - THIS CAN BE LATER REMOVED *****************/
 static void mqtt_publish_task(void *pvParameters) {
+
+    adc_oneshot_unit_handle_t adc1_handle;
+    adc_oneshot_unit_init_cfg_t unit_cfg = {
+        .unit_id  = ADC_UNIT_1,
+        .ulp_mode = ADC_ULP_MODE_DISABLE,
+    };
+    ESP_ERROR_CHECK(adc_oneshot_new_unit(&unit_cfg, &adc1_handle));
+    //initializing sensors
+    mq136_init(adc1_handle);
+    //mq137_init(adc1_handle);
+    dust_sensor_init(adc1_handle);
+    bme680_sensor_init();
+
+    time_t now=0;
+    int retry = 0;
+    while (now < 1700000000  && retry < 10) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        time(&now);
+        retry++;
+        ESP_LOGI(TAG, "Waiting for time sync... %d", (int)now);
+    }
+
     while(1) {
         if(client != NULL) {
-            esp_mqtt_client_publish(client, "qualiair/test", "hello from esp32", 0, 1, 0);
+            // read all sensors
+        DustReading dust = dust_sensor_read();
+        BME680Reading bme = bme680_sensor_read();
+        float temperature = send_bme680_sensor__temperature(bme);    // pass in
+        float humidity = send_bme680_sensor__humidity(bme);       // pass in
+        float pressure = send_bme680_sensor__pressure(bme);
+
+        float dust_density = send_dust_sensor__density(dust);
+        float h2s_ppm = send_mq136_sensor__ppm();
+        time_t now;
+        time(&now);
+        ESP_LOGI(TAG, "now is: %d", (int)now);
+
+        float nh3_ppm = 19;//send_mq137_sensor__ppm();<- DUMMY 19ppm for testing
+        
+
+
+        // format into JSON string
+        char OurData[256];
+        snprintf(OurData, sizeof(OurData),
+            "{\"device_id\":\"sensor1\","
+            "\"ammonia\":%.4f,"
+            "\"hydrogen_sulfide\":%.4f,"
+            "\"humidity\":%.2f,"//in %
+            "\"temperature\":%.2f,"//in °C
+            "\"dust\":%.4f,"//in mg/m³
+            "\"timestamp\":%d,"
+            "\"pressure\":%.2f}",//in hPa
+            nh3_ppm,
+            h2s_ppm,
+            humidity,
+            temperature,
+            dust_density,
+            (int)now,
+            pressure
+        );
+            esp_mqtt_client_publish(client, "qualiair/test", OurData, 0, 1, 0);
             ESP_LOGI(TAG, "Published to qualiair/test");
         }
         vTaskDelay(pdMS_TO_TICKS(5000)); // publish every 5 seconds
@@ -66,4 +133,5 @@ void mqtt_manager_connect(void){
     ESP_LOGI(TAG, "Connecting to HiveMQ...");
     esp_mqtt_client_start(client); //start MQTT client to connect to broker
 }
+
 

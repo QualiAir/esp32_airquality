@@ -5,6 +5,7 @@
 #include "wifi_provisioning/manager.h"
 #include "wifi_provisioning/scheme_ble.h"
 #include "mqtt/mqtt_manager.h" //include MQTT manager for handling MQTT connections and events
+#include "esp_sntp.h"
 
 static device_state_t current_state = STATE_UNPROVISIONED; //default state machine
 static const char *TAG = "**** state_machine ****"; //tag for logging
@@ -72,6 +73,7 @@ void sm_transition(device_state_t new_state) {
             if(!isProvisioned) {
                 wifi_prov_mgr_stop_provisioning(); //stop BLE provisioning service since credentials have been received
             }
+
             //connected to Wi-Fi, start MQTT
             mqtt_manager_init(); //initialize MQTT manager
             mqtt_manager_connect(); //connect to MQTT broker

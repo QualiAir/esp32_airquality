@@ -74,6 +74,26 @@ void sm_transition(device_state_t new_state) {
                 wifi_prov_mgr_stop_provisioning(); //stop BLE provisioning service since credentials have been received
             }
 
+            esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);//this and the following 2 are used to sync time with an NTP server, which is needed to get accurate timestamps for the MQTT messages
+            esp_sntp_setservername(0, "pool.ntp.org");
+            esp_sntp_init();
+
+            //ensures that time is synced before starting MQTT connection
+            time_t now = 0;
+            int retry = 0;
+            while (now < 1700000000 && retry < 20) {
+                vTaskDelay(pdMS_TO_TICKS(1000));
+                time(&now);
+                retry++;
+                ESP_LOGI(TAG, "Waiting for time sync... attempt %d, now=%d", retry, (int)now);
+            }
+
+            if (now < 1700000000) {
+                ESP_LOGW(TAG, "Time sync failed after 20 attempts!");
+            } else {
+                ESP_LOGI(TAG, "Time synced successfully: %d", (int)now);
+            }
+
             //connected to Wi-Fi, start MQTT
             mqtt_manager_init(); //initialize MQTT manager
             mqtt_manager_connect(); //connect to MQTT broker

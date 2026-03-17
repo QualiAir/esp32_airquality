@@ -10,7 +10,9 @@
 static device_state_t current_state = STATE_UNPROVISIONED; //default state machine
 static const char *TAG = "**** state_machine ****"; //tag for logging
 extern bool isProvisioned; //extern variable to check if device is already provisioned
-const char *pop = "TEAM1abcd1234"; //proof of possession for secure provisioning, this is the PIN that the user will have to input on the provisioning app to allow provisioning with that specific phone
+//proof of possession for secure provisioning, this is the PIN that the user will have 
+//to input on the provisioning app to allow provisioning with that specific phone
+const char *pop = "TEAM1abcd1234"; 
 
 /*
  * this function automatically assigns the current state to UNPROVISIONED

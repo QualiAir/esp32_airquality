@@ -18,7 +18,8 @@ idf_component_register(
         "state"
         "mqtt"
         "sensor"
-    REQUIRES 
+    REQUIRES
+        driver
         esp_event 
         esp_wifi 
         nvs_flash 

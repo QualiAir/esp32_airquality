@@ -24,7 +24,7 @@ void mq137_init(adc_oneshot_unit_handle_t adc_handle_in) {
         .atten    = ADC_ATTEN_DB_12,
         .bitwidth = ADC_BITWIDTH_DEFAULT,
     };
-    adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_6, &config);
+    adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_3, &config);
 
     adc_cali_line_fitting_config_t cali_config = {
         .unit_id  = ADC_UNIT_1,
@@ -38,7 +38,7 @@ void mq137_read(void) {
     int adc_raw    = 0;
     int voltage_mv = 0;
 
-    adc_oneshot_read(adc1_handle, ADC_CHANNEL_6, &adc_raw);
+    adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &adc_raw); // uses gpio 39
     adc_cali_raw_to_voltage(cali_handle, adc_raw, &voltage_mv);
 
     float voltage_v = voltage_mv / 1000.0f;
@@ -69,7 +69,7 @@ float send_mq137_sensor__ppm(void){
     int adc_raw    = 0;
     int voltage_mv = 0;
 
-    adc_oneshot_read(adc1_handle, ADC_CHANNEL_6, &adc_raw);
+    adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &adc_raw); //uses gpio
     adc_cali_raw_to_voltage(cali_handle, adc_raw, &voltage_mv);
 
     float voltage_v = voltage_mv / 1000.0f;
@@ -101,7 +101,7 @@ float send_mq137_sensor__ppm(void){
 //     int adc_raw    = 0;
 //     int voltage_mv = 0;
 
-//     adc_oneshot_read(adc1_handle, ADC_CHANNEL_6, &adc_raw);
+//     adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &adc_raw);
 //     adc_cali_raw_to_voltage(cali_handle, adc_raw, &voltage_mv);
 
 //     float voltage_v = voltage_mv / 1000.0f;

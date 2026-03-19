@@ -5,15 +5,19 @@
 #include "esp_event_base.h"
 #include "esp_netif.h" //include esp_netif for network interface management
 #include "esp_wifi.h" //include esp_wifi for Wi-Fi connectivity
+#include "esp_bt.h" //include esp_bt for Bluetooth functionality (BLE provisioning)
 #include "wifi_provisioning/manager.h"
 #include "wifi_provisioning/scheme_ble.h" //include BLE provisioning scheme for Wi-Fi provisioning
 #include "esp_sntp.h"// for time synchronization
 #include "driver/gpio.h"  //for reset button
 #include "freertos/FreeRTOS.h"  // for vTaskDelay
 #include "freertos/task.h"      // for pdMS_TO_TICKS
+#include "sensor_manager.h" //include sensor manager for reading sensor data
 
 static const char *TAG = "**** main ****"; //tag for logging
 bool isProvisioned = false;
+
+//reset button definitions
 #define RESET_BUTTON_GPIO    GPIO_NUM_0  // BOOT button
 #define RESET_HOLD_MS        5000        // 5 second hold
 #define LED_PIN              GPIO_NUM_2
@@ -56,8 +60,11 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             case WIFI_PROV_END:
                 ESP_LOGI(TAG, "Provisioning ended.....");
                 wifi_prov_mgr_deinit();
+                // Free BLE memory — no longer needed after provisioning
+                esp_bt_controller_disable();
+                esp_bt_controller_deinit();
+                esp_bt_mem_release(ESP_BT_MODE_BLE);
                 break;
-
             default:
                 ESP_LOGW(TAG, "Unknown provisioning event ID: %d", event_id);
                 break;
@@ -115,15 +122,7 @@ static void reset_button_task(void *arg) {
             // Was it held long enough?
             if (hold_time >= RESET_HOLD_MS) {
                 ESP_LOGW(TAG, "Resetting WiFi credentials...");
-                
-                // Rapid blink = resetting
-                for (int i = 0; i < 6; i++) {
-                    gpio_set_level(LED_PIN, 1);
-                    vTaskDelay(pdMS_TO_TICKS(100));
-                    gpio_set_level(LED_PIN, 0);
-                    vTaskDelay(pdMS_TO_TICKS(100));
-                }
-                
+                    
                 nvs_flash_erase();
                 esp_restart();
             } else {
@@ -136,13 +135,18 @@ static void reset_button_task(void *arg) {
 }
 
 void app_main(){
-    
+
     // Start reset button task
     xTaskCreate(reset_button_task, "reset_btn", 2048, NULL, 5, NULL);
 
-    esp_log_level_set("*", ESP_LOG_VERBOSE);
+    /*UNCOMMENT DURING DEVELOPMENT ONLY - THIS TAKES TOO MUCH MEMORY*/
+    esp_log_level_set("*", ESP_LOG_VERBOSE); 
+
+    //esp_log_level_set("*", ESP_LOG_WARN);    // only warnings/errors
+
     printf("*************** app_main started ***************\n");
 
+  
     // NVS
     esp_err_t ret = nvs_flash_init();
     if(ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -150,12 +154,16 @@ void app_main(){
         nvs_flash_erase();
         ret = nvs_flash_init();
     }
+
+    //init sensors immediately
+    sensor_manager_init();
+    
     
     // NETIF AND EVENT LOOP
     esp_netif_init();
     esp_event_loop_create_default();
     esp_netif_t *netif = esp_netif_create_default_wifi_sta();
-    esp_netif_set_hostname(netif, "Qualiair Device");
+    esp_netif_set_hostname(netif, "QualiairDevice");
     
     // WIFI INIT
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -169,7 +177,6 @@ void app_main(){
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL);
 
     sm_init();
-
     // Let state machine init the provisioning manager first via STATE_UNPROVISIONED
     sm_transition(STATE_UNPROVISIONED);
 

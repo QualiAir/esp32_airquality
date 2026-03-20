@@ -8,10 +8,16 @@
 #include "wifi_provisioning/manager.h"
 #include "wifi_provisioning/scheme_ble.h" //include BLE provisioning scheme for Wi-Fi provisioning
 #include "esp_sntp.h"// for time synchronization
-
+#include "driver/gpio.h"  //for reset button
+#include "freertos/FreeRTOS.h"  // for vTaskDelay
+#include "freertos/task.h"      // for pdMS_TO_TICKS
 
 static const char *TAG = "**** main ****"; //tag for logging
 bool isProvisioned = false;
+#define RESET_BUTTON_GPIO    GPIO_NUM_0  // BOOT button
+#define RESET_HOLD_MS        5000        // 5 second hold
+#define LED_PIN              GPIO_NUM_2
+
 
 // handle events such as Wi-Fi connection, MQTT messages, etc...
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
@@ -86,8 +92,54 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
     }
 }
 
+static void reset_button_task(void *arg) {
+    gpio_set_direction(RESET_BUTTON_GPIO, GPIO_MODE_INPUT);
+    
+    while (1) {
+        // Check if button is pressed
+        if (gpio_get_level(RESET_BUTTON_GPIO) == 0) {
+            ESP_LOGW(TAG, "Reset button pressed, hold for 5 seconds to reset...");
+            
+            int hold_time = 0;
+            
+            // Count how long button is held
+            while (gpio_get_level(RESET_BUTTON_GPIO) == 0 && hold_time < RESET_HOLD_MS) {
+                // Fast blink while holding
+                gpio_set_level(LED_PIN, 1);
+                vTaskDelay(pdMS_TO_TICKS(250));
+                gpio_set_level(LED_PIN, 0);
+                vTaskDelay(pdMS_TO_TICKS(250));
+                hold_time += 500;
+            }
+            
+            // Was it held long enough?
+            if (hold_time >= RESET_HOLD_MS) {
+                ESP_LOGW(TAG, "Resetting WiFi credentials...");
+                
+                // Rapid blink = resetting
+                for (int i = 0; i < 6; i++) {
+                    gpio_set_level(LED_PIN, 1);
+                    vTaskDelay(pdMS_TO_TICKS(100));
+                    gpio_set_level(LED_PIN, 0);
+                    vTaskDelay(pdMS_TO_TICKS(100));
+                }
+                
+                nvs_flash_erase();
+                esp_restart();
+            } else {
+                ESP_LOGI(TAG, "Button released too early, ignoring...");
+            }
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(100)); // check every 100ms
+    }
+}
+
 void app_main(){
     
+    // Start reset button task
+    xTaskCreate(reset_button_task, "reset_btn", 2048, NULL, 5, NULL);
+
     esp_log_level_set("*", ESP_LOG_VERBOSE);
     printf("*************** app_main started ***************\n");
 

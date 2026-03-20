@@ -141,6 +141,15 @@ BME680Reading bme680_sensor_read(void) {
     result.gas_resistance = data.gas_resistance;
     result.valid         = (data.status & BME68X_GASM_VALID_MSK) ? true : false;
 
+    // ============================================
+    ESP_LOGI(TAG, "Raw data: temp=%.2f hum=%.2f pres=%.2f gas=%.0f status=0x%02X",
+         data.temperature, data.humidity, 
+         data.pressure/100.0f, data.gas_resistance, data.status);
+    ESP_LOGI(TAG, "Status: new_data=%d gas_valid=%d heat_stable=%d",
+            (data.status & BME68X_NEW_DATA_MSK) ? 1 : 0,
+            (data.status & BME68X_GASM_VALID_MSK) ? 1 : 0,
+            (data.status & BME68X_HEAT_STAB_MSK) ? 1 : 0);
+    // ============================================
     if (!result.valid) {
         ESP_LOGW(TAG, "Gas measurement not valid yet — heater still stabilising");
         result.valid = true;  // still return temp/hum/pres as valid

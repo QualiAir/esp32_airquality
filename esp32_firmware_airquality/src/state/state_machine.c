@@ -76,9 +76,15 @@ void sm_transition(device_state_t new_state) {
                 wifi_prov_mgr_stop_provisioning(); //stop BLE provisioning service since credentials have been received
             }
 
-            esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);//this and the following 2 are used to sync time with an NTP server, which is needed to get accurate timestamps for the MQTT messages
-            esp_sntp_setservername(0, "pool.ntp.org");
-            esp_sntp_init();
+            static bool sntp_initialized = false;
+            if (!sntp_initialized) {
+                esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+                esp_sntp_setservername(0, "pool.ntp.org");
+                esp_sntp_init();
+                sntp_initialized = true;
+            }else{
+                ESP_LOGI(TAG, "SNTP already initialized, skipping...");
+            }
 
             //ensures that time is synced before starting MQTT connection
             time_t now = 0;

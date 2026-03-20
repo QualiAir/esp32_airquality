@@ -6,6 +6,7 @@
 #include "sensor_manager.h"
 #include "time.h"
 #include "secrets.h"
+#include "esp_crt_bundle.h"
 #include <inttypes.h>
 
 static const char *TAG = "**** mqtt_manager ****"; //tag for logging
@@ -94,6 +95,7 @@ static void mqtt_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 void mqtt_manager_init(void){
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = MQTT_BROKER_URI,
+        .broker.verification.crt_bundle_attach = esp_crt_bundle_attach,
         .credentials.client_id = MQTT_CLIENT_ID,
         .credentials.username = MQTT_USERNAME,
         .credentials.authentication.password = MQTT_PASSWORD,

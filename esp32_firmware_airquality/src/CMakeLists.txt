@@ -26,8 +26,8 @@ idf_component_register(
     REQUIRES
         driver
         esp_event
-        esp_tls
-        esp_wifi 
+        esp_wifi
+        mbedtls
         nvs_flash 
         esp_netif 
         wifi_provisioning 

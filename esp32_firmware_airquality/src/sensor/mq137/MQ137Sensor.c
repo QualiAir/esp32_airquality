@@ -34,36 +34,36 @@ void mq137_init(adc_oneshot_unit_handle_t adc_handle_in) {
     adc_cali_create_scheme_line_fitting(&cali_config, &cali_handle);
 }
 
-void mq137_read(void) {
-    int adc_raw    = 0;
-    int voltage_mv = 0;
+// void mq137_read(void) {
+//     int adc_raw    = 0;
+//     int voltage_mv = 0;
 
-    adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &adc_raw); // uses gpio 39
-    adc_cali_raw_to_voltage(cali_handle, adc_raw, &voltage_mv);
+//     adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &adc_raw); // uses gpio 39
+//     adc_cali_raw_to_voltage(cali_handle, adc_raw, &voltage_mv);
 
-    float voltage_v = voltage_mv / 1000.0f;
-    ESP_LOGI(TAG, "Raw ADC: %d | Voltage: %.3f V", adc_raw, voltage_v);
+//     float voltage_v = voltage_mv / 1000.0f;
+//     ESP_LOGI(TAG, "Raw ADC: %d | Voltage: %.3f V", adc_raw, voltage_v);
 
-    if (voltage_v < 0.01f) {
-        ESP_LOGW(TAG, "Voltage too low, sensor likely disconnected");
-        return;
-    }
+//     if (voltage_v < 0.01f) {
+//         ESP_LOGW(TAG, "Voltage too low, sensor likely disconnected");
+//         return;
+//     }
 
-    float Rs = (R2 * Vcc / voltage_v) - R1 - R2;
-    ESP_LOGI(TAG, "Sensor Resistance: %.2f ohms", Rs);
+//     float Rs = (R2 * Vcc / voltage_v) - R1 - R2;
+//     ESP_LOGI(TAG, "Sensor Resistance: %.2f ohms", Rs);
 
-    if (Rs <= 0) {
-        ESP_LOGW(TAG, "Invalid Rs, skipping ppm calculation");
-        return;
-    }
+//     if (Rs <= 0) {
+//         ESP_LOGW(TAG, "Invalid Rs, skipping ppm calculation");
+//         return;
+//     }
 
-    // MQ137 curve parameters for NH3 (ammonia)
-    float m     = -0.38f;
-    float b     =  0.64f;
-    float ratio = Rs / R0;
-    float ppm   = powf(10.0f, (log10f(ratio) - b) / m);
-    ESP_LOGI(TAG, "NH3 concentration: %.2f ppm", ppm);
-}
+//     // MQ137 curve parameters for NH3 (ammonia)
+//     float m     = -0.38f;
+//     float b     =  0.64f;
+//     float ratio = Rs / R0;
+//     float ppm   = powf(10.0f, (log10f(ratio) - b) / m);
+//     ESP_LOGI(TAG, "NH3 concentration: %.2f ppm", ppm);
+// }
 
 float send_mq137_sensor__ppm(void){
     int adc_raw    = 0;

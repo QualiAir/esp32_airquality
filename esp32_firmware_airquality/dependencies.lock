@@ -1,0 +1,17 @@
+dependencies:
+  idf:
+    source:
+      type: idf
+    version: 5.5.0
+  mdns:
+    dependencies: []
+    source:
+      path: E:\repositories\QualiAir\esp32_airquality\esp32_firmware_airquality\components\mdns
+      type: local
+    version: 1.10.1
+direct_dependencies:
+- espressif/mdns
+- idf
+manifest_hash: 3b7f48ad38f1f2f79987e556fe2b8446e9e6b3e9cd8a49ee3960deeea01c3167
+target: esp32
+version: 2.0.0

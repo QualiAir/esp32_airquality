@@ -37,7 +37,7 @@ void mq136_init(adc_oneshot_unit_handle_t adc_handle_in) {
     adc_cali_create_scheme_line_fitting(&cali_config, &cali_handle);
 }
 
-void mq136_read(void) {
+float send_mq136_sensor__ppm(void){//mq136_read(void) {
     int adc_raw    = 0;
     int voltage_mv = 0;
 
@@ -65,31 +65,32 @@ void mq136_read(void) {
     float ratio = Rs / R0;
     float ppm   = powf(10.0f, (log10f(ratio) - b) / m);
     ESP_LOGI(TAG, "H2S concentration: %.2f ppm", ppm);
-}
-
-float send_mq136_sensor__ppm(void){
-    int adc_raw    = 0;
-    int voltage_mv = 0;
-
-    adc_oneshot_read(adc1_handle, ADC_CHANNEL_6, &adc_raw);
-    adc_cali_raw_to_voltage(cali_handle, adc_raw, &voltage_mv);
-
-    float voltage_v = voltage_mv / 1000.0f;
-    if (voltage_v < 0.01f) {
-        return -1.0f; // error code for invalid reading
-    }
-
-    float Rs = (R2 * Vcc / voltage_v) - R1 - R2;
-    if (Rs <= 0) {
-        return -1.0f; // error code for invalid reading
-    }
-
-    float m     = -0.35f;
-    float b     =  0.8f;
-    float ratio = Rs / R0;
-    float ppm   = powf(10.0f, (log10f(ratio) - b) / m);
     return ppm;
 }
+
+// float send_mq136_sensor__ppm(void){
+//     int adc_raw    = 0;
+//     int voltage_mv = 0;
+
+//     adc_oneshot_read(adc1_handle, ADC_CHANNEL_6, &adc_raw);
+//     adc_cali_raw_to_voltage(cali_handle, adc_raw, &voltage_mv);
+
+//     float voltage_v = voltage_mv / 1000.0f;
+//     if (voltage_v < 0.01f) {
+//         return -1.0f; // error code for invalid reading
+//     }
+
+//     float Rs = (R2 * Vcc / voltage_v) - R1 - R2;
+//     if (Rs <= 0) {
+//         return -1.0f; // error code for invalid reading
+//     }
+
+//     float m     = -0.35f;
+//     float b     =  0.8f;
+//     float ratio = Rs / R0;
+//     float ppm   = powf(10.0f, (log10f(ratio) - b) / m);
+//     return ppm;
+// }
 
 
 float mq136_calibrate_r0(int samples, int delay_ms)

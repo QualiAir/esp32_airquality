@@ -6,6 +6,7 @@
 #include "wifi_provisioning/scheme_ble.h"
 #include "mqtt/mqtt_manager.h" //include MQTT manager for handling MQTT connections and events
 #include "esp_sntp.h"
+#include "wifi/wifi_manager.h" //include wifi manager for Wi-Fi provisioning and connectivity
 
 static device_state_t current_state = STATE_UNPROVISIONED; //default state machine
 static const char *TAG = "**** state_machine ****"; //tag for logging
@@ -59,7 +60,7 @@ void sm_transition(device_state_t new_state) {
             *       This can be NULL if not used.
             */
 
-            
+            wifi_manager_register_endpoint(); //register custom endpoint for sending device info to the provisioning app
             wifi_prov_mgr_start_provisioning(WIFI_PROV_SECURITY_1, pop, "QualiAir Link", NULL);
             break;
         case STATE_PROVISIONING:
@@ -103,8 +104,15 @@ void sm_transition(device_state_t new_state) {
             }
 
             //connected to Wi-Fi, start MQTT
-            mqtt_manager_init(); //initialize MQTT manager
-            mqtt_manager_connect(); //connect to MQTT broker
+            static bool mqtt_initialized = false;
+            if (!mqtt_initialized) {
+                mqtt_manager_init(); //initialize MQTT manager
+                mqtt_manager_connect(); //connect to MQTT broker
+                mqtt_initialized = true;
+            } else {
+                ESP_LOGI(TAG, "MQTT already initialized, skipping init...");
+                mqtt_manager_connect(); //connect to MQTT broker
+            }
             break;
         case STATE_ERROR:
             ESP_LOGE(TAG, "Device is in error state.....");
@@ -122,4 +130,16 @@ void sm_transition(device_state_t new_state) {
  */
 device_state_t sm_get_state() {
     return current_state;
+}
+
+void sm_start(void){
+    sm_transition(STATE_UNPROVISIONED);
+
+    bool provisioned = false;
+    wifi_prov_mgr_is_provisioned(&provisioned);
+    if(provisioned){
+        ESP_LOGI(TAG, "Already provisioned, connecting to Wi-Fi...");
+        wifi_prov_mgr_deinit();
+        sm_transition(STATE_CONNECTING);
+    }
 }

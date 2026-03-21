@@ -29,8 +29,8 @@ SensorData sensor_manager_read(void) {
     SensorData data = { 0 };
 
     // read all sensors
-    mq136_read();
-    mq137_read();
+    //mq136_read();
+    //mq137_read();
     DustReading dust = dust_sensor_read();
     BME680Reading bme = bme680_sensor_read();
     

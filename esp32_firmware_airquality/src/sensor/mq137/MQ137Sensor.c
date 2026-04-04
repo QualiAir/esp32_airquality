@@ -7,12 +7,13 @@
 #include "esp_adc/adc_cali_scheme.h"
 #include <math.h>
 
-static const char *TAG = "MQ137";
+static const char *TAG = "==== MQ137 ====";
 
-static const float Vcc = 5.0f;
-static const float R1  = 10000.0f;  // 10k
-static const float R2  = 20000.0f;  // 20k
-static const float R0  = 10000.0f;  // TODO: calibrate experimentally in clean air
+static const float Vcc = 4.88f;
+static const float R1  = 10000.0f;  // 10k Ohm
+static const float R2  = 20000.0f;  // 20k Ohm
+static const float RL = 10000.0f;  // Load resistor on MQ137 board
+static const float R0  = 4901.64f;  // TODO: calibrate experimentally in clean air
 
 static adc_oneshot_unit_handle_t adc1_handle;
 static adc_cali_handle_t         cali_handle = NULL;
@@ -34,36 +35,36 @@ void mq137_init(adc_oneshot_unit_handle_t adc_handle_in) {
     adc_cali_create_scheme_line_fitting(&cali_config, &cali_handle);
 }
 
-void mq137_read(void) {
-    int adc_raw    = 0;
-    int voltage_mv = 0;
+// void mq137_read(void) {
+//     int adc_raw    = 0;
+//     int voltage_mv = 0;
 
-    adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &adc_raw); // uses gpio 39
-    adc_cali_raw_to_voltage(cali_handle, adc_raw, &voltage_mv);
+//     adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &adc_raw); // uses gpio 39
+//     adc_cali_raw_to_voltage(cali_handle, adc_raw, &voltage_mv);
 
-    float voltage_v = voltage_mv / 1000.0f;
-    ESP_LOGI(TAG, "Raw ADC: %d | Voltage: %.3f V", adc_raw, voltage_v);
+//     float voltage_v = voltage_mv / 1000.0f;
+//     ESP_LOGI(TAG, "Raw ADC: %d | Voltage: %.3f V", adc_raw, voltage_v);
 
-    if (voltage_v < 0.01f) {
-        ESP_LOGW(TAG, "Voltage too low, sensor likely disconnected");
-        return;
-    }
+//     if (voltage_v < 0.01f) {
+//         ESP_LOGW(TAG, "Voltage too low, sensor likely disconnected");
+//         return;
+//     }
 
-    float Rs = (R2 * Vcc / voltage_v) - R1 - R2;
-    ESP_LOGI(TAG, "Sensor Resistance: %.2f ohms", Rs);
+//     float Rs = (R2 * Vcc / voltage_v) - R1 - R2;
+//     ESP_LOGI(TAG, "Sensor Resistance: %.2f ohms", Rs);
 
-    if (Rs <= 0) {
-        ESP_LOGW(TAG, "Invalid Rs, skipping ppm calculation");
-        return;
-    }
+//     if (Rs <= 0) {
+//         ESP_LOGW(TAG, "Invalid Rs, skipping ppm calculation");
+//         return;
+//     }
 
-    // MQ137 curve parameters for NH3 (ammonia)
-    float m     = -0.38f;
-    float b     =  0.64f;
-    float ratio = Rs / R0;
-    float ppm   = powf(10.0f, (log10f(ratio) - b) / m);
-    ESP_LOGI(TAG, "NH3 concentration: %.2f ppm", ppm);
-}
+//     // MQ137 curve parameters for NH3 (ammonia)
+//     float m     = -0.38f;
+//     float b     =  0.64f;
+//     float ratio = Rs / R0;
+//     float ppm   = powf(10.0f, (log10f(ratio) - b) / m);
+//     ESP_LOGI(TAG, "NH3 concentration: %.2f ppm", ppm);
+// }
 
 float send_mq137_sensor__ppm(void){
     int adc_raw    = 0;
@@ -80,7 +81,11 @@ float send_mq137_sensor__ppm(void){
         return -1.0f; // Indicate error
     }
 
-    float Rs = (R2 * Vcc / voltage_v) - R1 - R2;
+//    float Rs = (R2 * Vcc / voltage_v) - R1 - R2;
+    // Correct for voltage divider
+    float V_sensor = voltage_v * ((R1 + R2) / R2);
+    // Calculate Rs
+    float Rs = (Vcc / V_sensor - 1.0f) * RL;
     ESP_LOGI(TAG, "Sensor Resistance: %.2f ohms", Rs);
 
     if (Rs <= 0) {
@@ -120,3 +125,55 @@ float send_mq137_sensor__ppm(void){
 //     float ppm   = powf(10.0f, (log10f(ratio) - b) / m);
 //     return ppm;
 // }
+
+float mq137_calibrate_r0(int samples, int delay_ms)
+{
+    float rs_sum = 0.0f;
+    int valid_samples = 0;
+
+    for (int i = 0; i < samples; i++) {
+        int adc_raw    = 0;
+        int voltage_mv = 0;
+
+        adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &adc_raw); // GPIO33
+        adc_cali_raw_to_voltage(cali_handle, adc_raw, &voltage_mv);
+
+        float voltage_v = voltage_mv / 1000.0f;
+        ESP_LOGI(TAG, "Raw: %d | Voltage: %.3fV", adc_raw, voltage_v);
+
+        if (voltage_v < 0.01f) {
+            vTaskDelay(pdMS_TO_TICKS(delay_ms));
+            continue;
+        }
+
+        // Correct for voltage divider
+        float V_sensor = voltage_v * ((R1 + R2) / R2);
+        // Calculate Rs
+        float Rs = (Vcc / V_sensor - 1.0f) * RL;
+
+        if (Rs > 0) {
+            rs_sum += Rs;
+            valid_samples++;
+            ESP_LOGI(TAG, "Rs: %.2f Ohm | V_adc: %.4fV | V_sensor: %.4fV",
+                Rs, voltage_v, V_sensor);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(delay_ms));
+    }
+
+    if (valid_samples == 0) {
+        ESP_LOGE(TAG, "Calibration failed: no valid samples");
+        return -1.0f;
+    }
+
+    float Rs_avg = rs_sum / valid_samples;
+
+    // MQ137 clean air ratio from hanwei datasheet = 3.4
+    float R0_calculated = Rs_avg / 3.4f;
+
+    ESP_LOGI(TAG, "Calibration complete");
+    ESP_LOGI(TAG, "Average Rs: %.2f ohms", Rs_avg);
+    ESP_LOGI(TAG, "Calculated R0: %.2f ohms", R0_calculated);
+
+    return R0_calculated;
+}

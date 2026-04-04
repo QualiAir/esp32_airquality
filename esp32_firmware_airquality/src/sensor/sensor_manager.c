@@ -8,9 +8,23 @@
 #include "esp_timer.h"
 #include "time.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"  // for vTaskDelay
+#include "freertos/task.h"      // for pdMS_TO_TICKS
+#include "MQ136Sensor.h"        // for mq136_calibrate_r0
 
 static adc_oneshot_unit_handle_t adc1_handle = NULL;
 static const char *TAG = "**** sensor_manager ****"; //tag for logging
+
+// static void calibration_task(void *arg) {
+//     vTaskDelay(pdMS_TO_TICKS(180000)); // wait 3 min warmup first!
+
+//     //float r0_mq136 = mq136_calibrate_r0(50, 500);
+//     float r0_mq137 = mq137_calibrate_r0(50, 500);
+//     //ESP_LOGI(TAG, "MQ136 Calibrated R0: %.2f ohms", r0_mq136);
+//     ESP_LOGI(TAG, "MQ137 Calibrated R0: %.2f ohms", r0_mq137);
+
+//     vTaskDelete(NULL); // delete this task after calibration
+// }
 
 void sensor_manager_init(void) {
     adc_oneshot_unit_init_cfg_t unit_cfg = {
@@ -23,14 +37,17 @@ void sensor_manager_init(void) {
     mq137_init(adc1_handle);
     dust_sensor_init(adc1_handle);
     bme680_sensor_init();
+
+    // Create a task to perform sensor calibration after warmup
+    //xTaskCreate(calibration_task, "calib_task", 4096, NULL, 3, NULL);
 }
 
 SensorData sensor_manager_read(void) {
     SensorData data = { 0 };
 
     // read all sensors
-    mq136_read();
-    mq137_read();
+    //mq136_read();
+    //mq137_read();
     DustReading dust = dust_sensor_read();
     BME680Reading bme = bme680_sensor_read();
     

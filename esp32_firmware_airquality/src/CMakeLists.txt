@@ -14,6 +14,7 @@ idf_component_register(
         "sensor/mq137/MQ137Sensor.c"
         "sensor/gp2y1010/GP2Y1010_DustSensor.c"
         "sensor/sensor_manager.c"
+        "wifi/wifi_manager.c"
     INCLUDE_DIRS
         "."
         "state"
@@ -23,6 +24,7 @@ idf_component_register(
         "sensor/mq136"
         "sensor/mq137"
         "sensor/gp2y1010"
+        "wifi"
     REQUIRES
         driver
         esp_event
@@ -38,5 +40,5 @@ idf_component_register(
         esp_timer
         lwip
         newlib
-        log 
+        log
 )

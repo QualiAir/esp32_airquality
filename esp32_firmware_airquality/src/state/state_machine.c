@@ -6,6 +6,8 @@
 #include "wifi_provisioning/scheme_ble.h"
 #include "mqtt/mqtt_manager.h" //include MQTT manager for handling MQTT connections and events
 #include "esp_sntp.h"
+#include "wifi/wifi_manager.h" //include wifi manager for Wi-Fi provisioning and connectivity
+#include "sensor_manager.h" //include sensor manager for reading sensor data
 
 static device_state_t current_state = STATE_UNPROVISIONED; //default state machine
 static const char *TAG = "**** state_machine ****"; //tag for logging
@@ -36,13 +38,6 @@ void sm_transition(device_state_t new_state) {
         case STATE_UNPROVISIONED:
             ESP_LOGI(TAG, "Device is unprovisioned, starting BLE provisioning.....");
             //start BLE provisioning
-            // config provisining manager with BLE scheme and event handler
-            wifi_prov_mgr_config_t config = {
-                .scheme = wifi_prov_scheme_ble,
-                .scheme_event_handler = WIFI_PROV_SCHEME_BLE_EVENT_HANDLER_FREE_BTDM,
-            };
-            //check for errors in initializing provisioning manager
-            ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
             /*
             * Start provisioning service. 
             *   This will wait for a connection from a provisioning client until the provisioning is successful (or fails after retries).
@@ -58,9 +53,10 @@ void sm_transition(device_state_t new_state) {
             * - service_key: an optional key that can be used by the provisioning client to authenticate with the device during provisioning. 
             *       This can be NULL if not used.
             */
-
-            
+            wifi_prov_mgr_disable_auto_stop(1000); 
+            wifi_manager_create_endpoint();                          // before start
             wifi_prov_mgr_start_provisioning(WIFI_PROV_SECURITY_1, pop, "QualiAir Link", NULL);
+            wifi_manager_register_endpoint();                        // after start
             break;
         case STATE_PROVISIONING:
             ESP_LOGI(TAG, "Device is provisioning, waiting for Wi-Fi credentials.....");
@@ -72,10 +68,6 @@ void sm_transition(device_state_t new_state) {
             break;
         case STATE_ONLINE:
             ESP_LOGI(TAG, "Device is online.....");
-            if(!isProvisioned) {
-                wifi_prov_mgr_stop_provisioning(); //stop BLE provisioning service since credentials have been received
-            }
-
             static bool sntp_initialized = false;
             if (!sntp_initialized) {
                 esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
@@ -103,8 +95,23 @@ void sm_transition(device_state_t new_state) {
             }
 
             //connected to Wi-Fi, start MQTT
-            mqtt_manager_init(); //initialize MQTT manager
-            mqtt_manager_connect(); //connect to MQTT broker
+            static bool mqtt_initialized = false;
+            if (!mqtt_initialized) {
+                mqtt_manager_init(); //initialize MQTT manager
+                mqtt_manager_connect(); //connect to MQTT broker
+                mqtt_initialized = true;
+            } else {
+                ESP_LOGI(TAG, "MQTT already initialized, skipping init...");
+                mqtt_manager_connect(); //connect to MQTT broker
+            }
+
+            // Initialize sensors after WiFi and MQTT are ready
+            static bool sensors_initialized = false;
+            if (!sensors_initialized) {
+                sensor_manager_init();
+                sensors_initialized = true;
+                ESP_LOGI(TAG, "Sensors initialized");
+            }
             break;
         case STATE_ERROR:
             ESP_LOGE(TAG, "Device is in error state.....");
@@ -122,4 +129,24 @@ void sm_transition(device_state_t new_state) {
  */
 device_state_t sm_get_state() {
     return current_state;
+}
+
+void sm_start(void){
+    bool provisioned = false;
+    // config provisining manager with BLE scheme and event handler
+    wifi_prov_mgr_config_t config = {
+        .scheme = wifi_prov_scheme_ble,
+        .scheme_event_handler = WIFI_PROV_SCHEME_BLE_EVENT_HANDLER_FREE_BTDM,
+    };
+    ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
+    //check for errors in initializing provisioning manager
+    wifi_prov_mgr_is_provisioned(&provisioned);
+
+    if(provisioned){
+        ESP_LOGI(TAG, "Already provisioned, connecting to Wi-Fi...");
+        wifi_prov_mgr_deinit();
+        sm_transition(STATE_CONNECTING);
+    } else {
+        sm_transition(STATE_UNPROVISIONED);
+    }
 }

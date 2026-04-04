@@ -7,7 +7,7 @@
 #include "freertos/task.h"
 #include "esp_timer.h"
 
-static const char *TAG = "BME680";
+static const char *TAG = "~~~~ BME680 ~~~~";
 
 // ---- Internal state ----
 static struct bme68x_dev bme;

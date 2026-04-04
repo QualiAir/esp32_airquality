@@ -11,7 +11,7 @@
 #define DUST_ADC_UNIT       ADC_UNIT_1
 #define DUST_ADC_CHANNEL    ADC_CHANNEL_7  // from pinout, GPIO35
 #define DUST_NUM_SAMPLES    10      // nb of samples to average
-#define DUST_VOLTAGE_DIV    2.0f    // Voltage divider ratio (two 10kΩ resistors = 0.5, so multiply by 2)
+#define DUST_VOLTAGE_DIV    1.5f    // Voltage divider ratio (three 10kΩ resistors = 0.33, so multiply by 1.5)
 
 // ---- Structs ----
 typedef struct {

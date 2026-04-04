@@ -4,14 +4,13 @@
 #include "driver/gpio.h"  //for reset button
 #include "freertos/FreeRTOS.h"  // for vTaskDelay
 #include "freertos/task.h"      // for pdMS_TO_TICKS
-#include "sensor_manager.h" //include sensor manager for reading sensor data
 #include "wifi/wifi_manager.h" //include wifi manager for Wi-Fi provisioning and connectivity
 
 static const char *TAG = "**** main ****"; //tag for logging
 bool isProvisioned = false;
 
 //reset button definitions
-#define RESET_BUTTON_GPIO    GPIO_NUM_0  // BOOT button
+#define RESET_BUTTON_GPIO    GPIO_NUM_3  // BOOT button
 #define RESET_HOLD_MS        5000        // 5 second hold
 #define LED_PIN              GPIO_NUM_2
 
@@ -38,7 +37,6 @@ static void reset_button_task(void *arg) {
             // Was it held long enough?
             if (hold_time >= RESET_HOLD_MS) {
                 ESP_LOGW(TAG, "Resetting WiFi credentials...");
-                    
                 nvs_flash_erase();
                 esp_restart();
             } else {
@@ -51,7 +49,6 @@ static void reset_button_task(void *arg) {
 }
 
 void app_main(){
-
     // Start reset button task
     xTaskCreate(reset_button_task, "reset_btn", 2048, NULL, 5, NULL);
 
@@ -70,9 +67,6 @@ void app_main(){
    
     //init wifi
     wifi_manager_init();
-
-    //init sensors
-    sensor_manager_init();
 
     //init state machine
     sm_init();

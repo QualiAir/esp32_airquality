@@ -1,16 +1,19 @@
 #include "GP2Y1010_DustSensor.h"
-
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "driver/gpio.h"
 #include "esp_adc/adc_oneshot.h"
 #include "esp_log.h"
-#include "rom/ets_sys.h"    // ets_delay_us()
+#include "esp_timer.h"
+//#include "rom/ets_sys.h"    // ets_delay_us()
 
-static const char *TAG = "DUST_SENSOR";
+static const char *TAG = "---- GP2Y10 ----";
 
 // ---- Timing constants (microseconds) ----
 #define PULSE_BEFORE_SAMPLE_US   280    // Wait after LED on before sampling
 #define PULSE_AFTER_SAMPLE_US     40    // Wait after sample before LED off
 #define PULSE_PERIOD_US         9680    // Remainder of 10ms cycle
+#define GP2Y_VOC 0.46f  // update after measuring your actual clean air voltage
 
 // ---- ADC handle (new driver) ----
 static adc_oneshot_unit_handle_t adc_handle = NULL;
@@ -35,7 +38,12 @@ void dust_sensor_init(adc_oneshot_unit_handle_t adc_handle_in) {
         .bitwidth = ADC_BITWIDTH_12,
     };
     ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, DUST_ADC_CHANNEL, &chan_cfg));
-    ESP_LOGI("DUST_SENSOR", "Dust sensor initialised — LED GPIO%d, ADC channel %d", DUST_LED_GPIO, DUST_ADC_CHANNEL);
+    ESP_LOGI(TAG, "Dust sensor initialised — LED GPIO%d, ADC channel %d", DUST_LED_GPIO, DUST_ADC_CHANNEL);
+}
+
+static void delay_us(uint32_t us) {
+    uint64_t start = esp_timer_get_time();
+    while ((esp_timer_get_time() - start) < us);
 }
 
 // ---- Read ----
@@ -46,14 +54,14 @@ DustReading dust_sensor_read(void) {
     for (int i = 0; i < DUST_NUM_SAMPLES; i++) {
         // Turn LED ON via NPN transistor
         gpio_set_level(DUST_LED_GPIO, 1);
-        ets_delay_us(PULSE_BEFORE_SAMPLE_US);   // 280µs before sampling
+        delay_us(PULSE_BEFORE_SAMPLE_US);   // 280µs before sampling
 
         adc_oneshot_read(adc_handle, DUST_ADC_CHANNEL, &raw);
         total += raw;
 
-        ets_delay_us(PULSE_AFTER_SAMPLE_US);    // 40µs after sampling
+        delay_us(PULSE_AFTER_SAMPLE_US);    // 40µs after sampling
         gpio_set_level(DUST_LED_GPIO, 0);       // Turn LED OFF
-        ets_delay_us(PULSE_PERIOD_US);          // Wait rest of 10ms cycle
+        delay_us(PULSE_PERIOD_US);          // Wait rest of 10ms cycle
     }
 
     int avg_raw = (int)(total / DUST_NUM_SAMPLES);
@@ -64,7 +72,8 @@ DustReading dust_sensor_read(void) {
     float voltage = ((float)avg_raw / 4095.0f) * 3.3f * DUST_VOLTAGE_DIV;
 
     // Convert to dust density mg/m³ (Sharp datasheet approximation)
-    float dust_density = (0.17f * voltage) - 0.1f;
+    //float dust_density = (0.17f * voltage) - 0.1f;
+    float dust_density = 0.17f * (voltage - GP2Y_VOC);
     if (dust_density < 0.0f) dust_density = 0.0f;
 
     DustReading result = {
@@ -72,7 +81,7 @@ DustReading dust_sensor_read(void) {
         .dust_density = dust_density,
         .raw_adc      = avg_raw,
     };
-
+    dust_sensor_print(result);
     return result;
 }
 
@@ -85,7 +94,7 @@ void dust_sensor_print(DustReading reading) {
 // ---- Deinit ----
 void dust_sensor_deinit(void) {
     if (adc_handle) {
-        adc_oneshot_del_unit(adc_handle);
+        //adc_oneshot_del_unit(adc_handle); - this will break the other sensors using the same ADC handle, so we won't delete it here
         adc_handle = NULL;
     }
 }

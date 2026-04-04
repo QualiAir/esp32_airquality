@@ -18,16 +18,16 @@ static const char *TAG = "**** wifi_manager ****";
 static bool isProvisioned = false;
 static char device_ip[32] = {0};
 static char device_id[32] = {0};
+static char device_hostname[32] = {0};
 
 static esp_err_t device_info_handler(uint32_t session_id, const uint8_t *inbuf, ssize_t inlen, uint8_t **outbuf, ssize_t *outlen, void *priv_data) {
-    
     if(inbuf != NULL && inlen > 0) {
         char incoming[32] = {0};
         size_t copy_len = inlen < sizeof(incoming)-1 ? inlen : sizeof(incoming)-1;
         memcpy(incoming, inbuf, copy_len);
         if(strcmp(incoming, "OK") == 0){
             ESP_LOGI(TAG, "Received OK from android app, device is provisioned with the info");
-            isProvisioned = true;
+            //isProvisioned = true;
 
             wifi_prov_mgr_stop_provisioning();
             
@@ -36,11 +36,10 @@ static esp_err_t device_info_handler(uint32_t session_id, const uint8_t *inbuf, 
             *outlen = strlen(ack);
             *outbuf = (uint8_t *)strdup(ack);
             return ESP_OK;
-        } else {
+        }else {
             ESP_LOGW(TAG, "Received unexpected data on device_info endpoint: %s", incoming);
         }
     }
-    
     // Respond with device info - device ID and IP address
     char response[128];
     snprintf(response, sizeof(response), "{\"device_id\":\"%s\",\"ip\":\"%s\"}", device_id, device_ip);
@@ -50,8 +49,12 @@ static esp_err_t device_info_handler(uint32_t session_id, const uint8_t *inbuf, 
     return ESP_OK;
 }
 
-void wifi_manager_register_endpoint(){
+void wifi_manager_create_endpoint(){
     wifi_prov_mgr_endpoint_create("device_info");
+    ESP_LOGI(TAG, "Device info endpoint created");
+}
+
+void wifi_manager_register_endpoint(){
     wifi_prov_mgr_endpoint_register("device_info", device_info_handler, NULL);
     ESP_LOGI(TAG, "Device info endpoint registered");
 }
@@ -91,8 +94,8 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             }
 
             case WIFI_PROV_END:
-                ESP_LOGI(TAG, "Provisioning ended.....");
-                wifi_prov_mgr_deinit();
+                // ESP_LOGI(TAG, "Provisioning ended.....");
+                // wifi_prov_mgr_deinit();
                 // Free BLE memory — no longer needed after provisioning
                 esp_bt_controller_disable();
                 esp_bt_controller_deinit();
@@ -114,10 +117,9 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 break;
 
             case WIFI_EVENT_STA_DISCONNECTED:
-                if(isProvisioned) {
                     ESP_LOGW(TAG, "Wifi station disconnected, retrying to connect.....");
+                    vTaskDelay(pdMS_TO_TICKS(5000));  // wait before retry
                     esp_wifi_connect();
-                }
                 break;
 
             default:
@@ -132,13 +134,16 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
         //setup mdns
         static bool mdns_initialized = false;
         if (!mdns_initialized) {
+            uint8_t mac[6];
+            esp_wifi_get_mac(ESP_IF_WIFI_STA, mac);
             mdns_init();
-            mdns_hostname_set(device_id);
+            snprintf(device_hostname, sizeof(device_hostname), "qualiair-%02X%02X%02X", mac[3], mac[4], mac[5]);
+            mdns_hostname_set(device_hostname);
             mdns_instance_name_set("QualiAir Device");
             mdns_initialized = true;
-            ESP_LOGI(TAG, "mDNS initialized with hostname: %s.local", device_id);
+            ESP_LOGI(TAG, "mDNS initialized with hostname: %s.local", device_hostname);
         }
-        isProvisioned = true;
+        //isProvisioned = true;
         sm_transition(STATE_ONLINE);
     }
 }
@@ -157,7 +162,7 @@ void wifi_manager_init(void) {
     //generate device ID from MAC address
     uint8_t mac[6];
     esp_wifi_get_mac(ESP_IF_WIFI_STA, mac);
-    snprintf(device_id, sizeof(device_id), "qualiair_%02X:%02X:%02X", mac[3], mac[4], mac[5]);
+    snprintf(device_id, sizeof(device_id), "qualiair_%02X%02X%02X", mac[3], mac[4], mac[5]);
     ESP_LOGI(TAG, "Device ID: %s", device_id);
     //set hostname
     esp_netif_set_hostname(netif, device_id);

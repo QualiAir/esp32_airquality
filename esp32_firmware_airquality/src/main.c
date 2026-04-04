@@ -10,7 +10,7 @@ static const char *TAG = "**** main ****"; //tag for logging
 bool isProvisioned = false;
 
 //reset button definitions
-#define RESET_BUTTON_GPIO    GPIO_NUM_3  // BOOT button
+#define RESET_BUTTON_GPIO    GPIO_NUM_0  // BOOT button
 #define RESET_HOLD_MS        5000        // 5 second hold
 #define LED_PIN              GPIO_NUM_2
 

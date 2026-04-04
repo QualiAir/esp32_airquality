@@ -117,9 +117,12 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 break;
 
             case WIFI_EVENT_STA_DISCONNECTED:
+                device_state_t state = sm_get_state();
+                if(state == STATE_ONLINE){
                     ESP_LOGW(TAG, "Wifi station disconnected, retrying to connect.....");
-                    vTaskDelay(pdMS_TO_TICKS(5000));  // wait before retry
+                    //vTaskDelay(pdMS_TO_TICKS(5000));  // wait before retry
                     esp_wifi_connect();
+                }
                 break;
 
             default:

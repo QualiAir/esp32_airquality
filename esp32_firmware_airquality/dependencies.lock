@@ -6,7 +6,7 @@ dependencies:
   mdns:
     dependencies: []
     source:
-      path: E:\repositories\QualiAir\esp32_airquality\esp32_firmware_airquality\components\mdns
+      path: C:\Users\Jesse\Documents\Repos\QualiAir\esp32_airquality\esp32_firmware_airquality\components\mdns
       type: local
     version: 1.10.1
 direct_dependencies:

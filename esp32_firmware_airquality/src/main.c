@@ -11,11 +11,7 @@ static const char *TAG = "**** main ****"; //tag for logging
 bool isProvisioned = false;
 
 //reset button definitions
-<<<<<<< Updated upstream
-#define RESET_BUTTON_GPIO    GPIO_NUM_0  // BOOT button
-=======
 #define RESET_BUTTON_GPIO    GPIO_NUM_27  // BOOT button
->>>>>>> Stashed changes
 #define RESET_HOLD_MS        5000        // 5 second hold
 
 static void reset_button_task(void *arg) {
@@ -33,7 +29,7 @@ static void reset_button_task(void *arg) {
         if (gpio_get_level(RESET_BUTTON_GPIO) == 0) {
             ESP_LOGW(TAG, "Reset button pressed, hold for 5 seconds to reset...");
             
-    led_manager_set_state(LED_MODE_RESET);
+            led_manager_set_state(LED_MODE_RESET);
             int hold_time = 0;
             
             // Count how long button is held

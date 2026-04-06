@@ -15,6 +15,7 @@ idf_component_register(
         "sensor/gp2y1010/GP2Y1010_DustSensor.c"
         "sensor/sensor_manager.c"
         "wifi/wifi_manager.c"
+        "led/led_manager.c"
     INCLUDE_DIRS
         "."
         "state"
@@ -25,6 +26,7 @@ idf_component_register(
         "sensor/mq137"
         "sensor/gp2y1010"
         "wifi"
+        "led"
     REQUIRES
         driver
         esp_event

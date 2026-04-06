@@ -8,6 +8,7 @@
 #include "esp_sntp.h"
 #include "wifi/wifi_manager.h" //include wifi manager for Wi-Fi provisioning and connectivity
 #include "sensor_manager.h" //include sensor manager for reading sensor data
+#include "led/led_manager.h" //include LED manager for controlling the status LED
 
 static device_state_t current_state = STATE_UNPROVISIONED; //default state machine
 static const char *TAG = "**** state_machine ****"; //tag for logging
@@ -65,6 +66,7 @@ void sm_transition(device_state_t new_state) {
         case STATE_CONNECTING:
             ESP_LOGI(TAG, "Device is connecting to Wi-Fi.....");
             esp_wifi_connect(); // triggers connection using saved credentials
+            led_manager_set_state(LED_MODE_WIFI_CONNECTING);
             break;
         case STATE_ONLINE:
             ESP_LOGI(TAG, "Device is online.....");

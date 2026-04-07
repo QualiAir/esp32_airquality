@@ -49,7 +49,7 @@ static void mqtt_publish_task(void *pvParameters) {
                 data.pressure
             );
             esp_mqtt_client_publish(client, MQTT_TOPIC, sensor_data, 0, 1, 0);
-            led_manager_get_state() != LED_MODE_MQTT_SENDING ? led_manager_set_state(LED_MODE_MQTT_SENDING) : led_manager_set_state(LED_MODE_OFF);
+            led_manager_set_state(LED_MODE_MQTT_SENDING);
             ESP_LOGI(TAG, "Published to %s", MQTT_TOPIC);
         }
         vTaskDelay(pdMS_TO_TICKS(5000)); // publish every 5 seconds

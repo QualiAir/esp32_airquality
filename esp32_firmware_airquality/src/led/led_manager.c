@@ -20,7 +20,7 @@ static void led_task(void *arg) {
                 gpio_set_level(LED_PIN, 1);
                 vTaskDelay(pdMS_TO_TICKS(200));
                 gpio_set_level(LED_PIN, 0);
-                vTaskDelay(pdMS_TO_TICKS(800));
+                current_mode = LED_MODE_OFF; // reset to off after one blink
                 break;
 
             case LED_MODE_WIFI_CONNECTING:

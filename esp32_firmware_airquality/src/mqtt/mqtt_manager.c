@@ -7,6 +7,7 @@
 #include "time.h"
 #include "secrets.h"
 #include "esp_crt_bundle.h"
+#include "wifi_manager.h"
 #include <inttypes.h>
 
 static const char *TAG = "**** mqtt_manager ****"; //tag for logging
@@ -19,7 +20,7 @@ static void mqtt_publish_task(void *pvParameters) {
     time_t now=0;
     int retry = 0;
     while (now < 1700000000  && retry < 10) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay( pdMS_TO_TICKS(1000));
         time(&now);
         retry++;
         ESP_LOGI(TAG, "Waiting for time sync... %d", (int)now);
@@ -31,7 +32,7 @@ static void mqtt_publish_task(void *pvParameters) {
             // format into JSON string
             char sensor_data[256];
             snprintf(sensor_data, sizeof(sensor_data),
-                "{\"device_id\":\"sensor1\","
+                "{\"device_id\":\"%s\","
                 "\"ammonia\":%.4f,"
                 "\"hydrogen_sulfide\":%.4f,"
                 "\"humidity\":%.2f,"//in %
@@ -39,6 +40,7 @@ static void mqtt_publish_task(void *pvParameters) {
                 "\"dust\":%.4f,"//in mg/m³
                 "\"timestamp\":%d,"
                 "\"pressure\":%.2f}",//in hPa
+                wifi_manager_get_device_id(),
                 data.nh3_ppm,
                 data.h2s_ppm,
                 data.humidity,

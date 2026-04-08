@@ -8,6 +8,7 @@
 #include "secrets.h"
 #include "esp_crt_bundle.h"
 #include <inttypes.h>
+#include "led/led_manager.h"
 
 static const char *TAG = "**** mqtt_manager ****"; //tag for logging
 static esp_mqtt_client_handle_t client;
@@ -48,6 +49,7 @@ static void mqtt_publish_task(void *pvParameters) {
                 data.pressure
             );
             esp_mqtt_client_publish(client, MQTT_TOPIC, sensor_data, 0, 1, 0);
+            led_manager_set_state(LED_MODE_MQTT_SENDING);
             ESP_LOGI(TAG, "Published to %s", MQTT_TOPIC);
         }
         vTaskDelay(pdMS_TO_TICKS(5000)); // publish every 5 seconds
